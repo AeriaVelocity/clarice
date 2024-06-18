@@ -1,0 +1,15 @@
+# Dice Game in the Clarice programming language
+
+# By using "with", the "x" variable is immediately discarded after this statement
+with x as randomInt(1, 6) if x = 6 then print "Winner!" else print "Try again!"
+
+# If we want to keep "x"...
+let x as int
+set x to randomInt(1, 6)
+if x = 6 then print "Winner" else print "Try again!"
+    
+# If we want to add interaction...
+loop do
+    prompt "Ready to roll the dice? Hit Enter to play." then set x to randomInt(1, 6)
+    if x = 6 then print "Winner!" and break else print "Trying again..."
+
