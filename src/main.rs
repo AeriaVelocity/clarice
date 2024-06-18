@@ -1,3 +1,5 @@
+mod lexer;
+
 use linefeed::{Interface, ReadResult};
 
 fn clarice_eval(input: String) -> String {
@@ -16,7 +18,7 @@ fn clarice_welcome() {
     println!("YOU ARE RUNNING THE UNIMPLEMENTED CLARICE INTERACTIVE MODE. THIS IS NOT SUPPOSED TO WORK.");
 }
 
-fn main() {
+fn interactive() {
     // Welcome
     clarice_welcome();
 
@@ -40,4 +42,8 @@ fn main() {
         // Loop
         // ...well, it will loop by itself.
     }
+}
+
+fn main() {
+    lexer::test("with x as 1 print x");
 }
