@@ -1,5 +1,6 @@
 mod lexer;
 mod parser;
+mod symbol_table;
 
 use linefeed::{Interface, ReadResult};
 
