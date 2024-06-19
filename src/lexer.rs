@@ -1,6 +1,6 @@
 // lexer.rs - Lexer for the Clarice programming language
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     Keyword(String), // "with", "as", "to", "set", "where", "otherwise", "iter", etc.
     Identifier(String), // "x", "y", "z", "tomato", "celery", "avocado", etc.
@@ -48,7 +48,7 @@ impl<'a> Lexer<'a> {
         self.input.chars().nth(self.position)
     }
 
-    fn get_next_token(&mut self) -> Token {
+    pub fn get_next_token(&mut self) -> Token {
         while let Some(c) = self.current_char {
             if c.is_whitespace() {
                 self.skip_whitespace();
