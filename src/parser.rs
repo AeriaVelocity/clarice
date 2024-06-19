@@ -1,6 +1,8 @@
 // parser.rs - Parser for the Clarice programming language
 
 use crate::lexer::{Token, Lexer};
+use crate::symbol_table::{SymbolTable, Type};
+use crate::type_checker::{self, TypeChecker};
 use std::vec::Vec;
 
 #[derive(Debug)]
@@ -48,7 +50,7 @@ pub struct ToStatement {
 
 #[derive(Debug)]
 pub struct ThenStatement {
-    pub expression: Box<Expression>,
+    pub statement: Box<Statement>,
 }
 
 #[derive(Debug)]
@@ -64,8 +66,8 @@ pub struct PrintStatement {
 #[derive(Debug)]
 pub struct WhereStatement {
     pub condition: Box<Expression>,
-    pub true_branch: Vec<Statement>,
-    pub false_branch: Option<Vec<Statement>>,
+    pub true_branch: ASTNode,
+    pub false_branch: Option<ASTNode>,
 }
 
 #[derive(Debug)]
@@ -84,6 +86,7 @@ pub enum Expression {
     Identifier(String),
     IntegerLiteral(i64),
     StringLiteral(String),
+    BooleanLiteral(bool),
 }
 
 pub struct Parser<'a> {
@@ -105,29 +108,29 @@ impl<'a> Parser<'a> {
         self.current_token = self.lexer.get_next_token();
     }
 
-    fn parse_program(&mut self) -> Vec<Statement> {
+    fn parse_program(&mut self) -> ASTNode {
         let mut statements = Vec::new();
         while self.current_token != Token::EOF {
             let statement = self.parse_statement();
             statements.push(statement);
         }
-        statements
+        ASTNode::Program(statements)
     }
 
     fn parse_statement(&mut self) -> Statement {
-        match self.current_token {
+        match &self.current_token {
             Token::Keyword(ref keyword) => {
                 match keyword.as_str() {
-                    "with" => self.parse_with_statement(),
-                    "set" => self.parse_set_statement(),
-                    "as" => self.parse_as_statement(),
-                    "to" => self.parse_to_statement(),
-                    "then" => self.parse_then_statement(),
-                    "do" => self.parse_do_statement(),
-                    "print" => self.parse_print_statement(),
-                    "where" => self.parse_where_statement(),
-                    "loop" => self.parse_loop_statement(),
-                    "iter" => self.parse_iter_statement(),
+                    "with" => Statement::With(self.parse_with_statement()),
+                    "set" => Statement::Set(self.parse_set_statement()),
+                    "as" => Statement::As(self.parse_as_statement()),
+                    "to" => Statement::To(self.parse_to_statement()),
+                    "then" => Statement::Then(self.parse_then_statement()),
+                    "do" => Statement::Do(self.parse_do_statement()),
+                    "print" => Statement::Print(self.parse_print_statement()),
+                    "where" => Statement::Where(self.parse_where_statement()),
+                    "loop" => Statement::Loop(self.parse_loop_statement()),
+                    "iter" => Statement::Iter(self.parse_iter_statement()),
                     _ => {
                         println!("Clarice doesn't recognize the keyword \"{}\".", keyword);
                         self.advance();
@@ -138,10 +141,17 @@ impl<'a> Parser<'a> {
                     }
                 }
             },
+            Token::Identifier(_) => {
+                // Handle identifiers in specific contexts, if needed
+                println!("Expected a statement, got {:?}", self.current_token);
+                self.advance();
+                Statement::Print(Box::new(PrintStatement {
+                    expression: Box::new(Expression::StringLiteral("Unexpected Identifier.".to_string())),
+                }))
+            },
             _ => {
                 println!("Expected a statement, got {:?}", self.current_token);
                 self.advance();
-                // Placeholder error handling
                 Statement::Print(Box::new(PrintStatement {
                     expression: Box::new(Expression::StringLiteral("No Statement.".to_string())),
                 }))
@@ -149,107 +159,123 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_with_statement(&mut self) -> Statement {
+    fn parse_with_statement(&mut self) -> Box<WithStatement> {
         self.advance(); // Skip "with"
         let identifier = match self.current_token {
             Token::Identifier(ref id) => id.clone(),
             _ => {
                 println!("Expected identifier after 'with' keyword, got {:?}", self.current_token);
-                return Statement::Print(Box::new(PrintStatement {
-                    expression: Box::new(Expression::StringLiteral("No Identifier (With).".to_string())),
-                }));
+                return Box::new(WithStatement {
+                    identifier: "error".to_string(),
+                    expression: Box::new(Expression::StringLiteral("No Expression (With)".to_string())),
+                });
             }
         };
         self.advance(); // Advance to next token
         let expression = self.parse_expression();
-        Statement::With(Box::new(WithStatement {
+        Box::new(WithStatement {
             identifier,
             expression: Box::new(expression),
-        }))
+        })
     }
 
-    fn parse_set_statement(&mut self) -> Statement {
+    fn parse_set_statement(&mut self) -> Box<SetStatement> {
         self.advance(); // Skip "set"
         let variable = match self.current_token {
             Token::Identifier(ref id) => id.clone(),
             _ => {
                 println!("Expected identifier after 'set' keyword, got {:?}", self.current_token);
-                return Statement::Print(Box::new(PrintStatement {
-                    expression: Box::new(Expression::StringLiteral("No Identifier (Set).".to_string())),
-                }));
+                return Box::new(SetStatement {
+                    variable: "error".to_string(),
+                    expression: Box::new(Expression::StringLiteral("No Expression (Set)".to_string())),
+                });
             }
         };
-        self.advance(); // Advance to next token
+        self.advance(); // Skip identifier
+
+        match &self.current_token {
+            Token::Keyword(ref keyword) if keyword == "to" => self.advance(),
+            _ => {
+                println!("Expected 'to' after variable name, got {:?}", self.current_token);
+                return Box::new(SetStatement {
+                    variable: "error".to_string(),
+                    expression: Box::new(Expression::StringLiteral("No Expression (Set)".to_string())),
+                });
+            }
+        }
+
         let expression = self.parse_expression();
-        Statement::Set(Box::new(SetStatement {
+        Box::new(SetStatement {
             variable,
             expression: Box::new(expression),
-        }))
+        })
     }
 
-    fn parse_as_statement(&mut self) -> Statement {
+    fn parse_as_statement(&mut self) -> Box<AsStatement> {
         self.advance(); // Skip "as"
         let identifier = match self.current_token {
             Token::Identifier(ref id) => id.clone(),
             _ => {
                 println!("Expected identifier after 'as' keyword, got {:?}", self.current_token);
-                return Statement::Print(Box::new(PrintStatement {
-                    expression: Box::new(Expression::StringLiteral("No Identifier (As).".to_string())),
-                }));
+                return Box::new(AsStatement {
+                    identifier: "error".to_string(),
+                    expression: Box::new(Expression::StringLiteral("No Expression (As)".to_string())),
+                });
             }
         };
         self.advance(); // Advance to next token
         let expression = self.parse_expression();
-        Statement::As(Box::new(AsStatement {
+        Box::new(AsStatement {
             identifier,
             expression: Box::new(expression),
-        }))
+        })
     }
 
-    fn parse_to_statement(&mut self) -> Statement {
+    fn parse_to_statement(&mut self) -> Box<ToStatement> {
         self.advance(); // Skip "to"
         let identifier = match self.current_token {
             Token::Identifier(ref id) => id.clone(),
             _ => {
                 println!("Expected identifier after 'to' keyword, got {:?}", self.current_token);
-                return Statement::Print(Box::new(PrintStatement {
-                    expression: Box::new(Expression::StringLiteral("No Identifier (To).".to_string())),
-                }));
+                return Box::new(ToStatement {
+                    identifier: "error".to_string(),
+                    expression: Box::new(Expression::StringLiteral("No Expression (To)".to_string())),
+                });
             }
         };
         self.advance(); // Advance to next token
         let expression = self.parse_expression();
-        Statement::To(Box::new(ToStatement {
+        Box::new(ToStatement {
             identifier,
             expression: Box::new(expression),
-        }))
+        })
     }
 
-    fn parse_then_statement(&mut self) -> Statement {
+    fn parse_then_statement(&mut self) -> Box<ThenStatement> {
         self.advance(); // Skip "then"
-        let expression = self.parse_expression();
-        Statement::Then(Box::new(ThenStatement {
-            expression: Box::new(expression),
-        }))
+        let statement = self.parse_statement();
+        Box::new(ThenStatement {
+            statement: Box::new(statement),
+        })
     }
 
-    fn parse_do_statement(&mut self) -> Statement {
+    fn parse_do_statement(&mut self) -> Box<DoStatement> {
         self.advance(); // Skip "do"
         let expression = self.parse_expression();
-        Statement::Do(Box::new(DoStatement {
+        Box::new(DoStatement {
             expression: Box::new(expression),
-        }))
+        })
     }
 
-    fn parse_print_statement(&mut self) -> Statement {
+    fn parse_print_statement(&mut self) -> Box<PrintStatement> {
         self.advance(); // Skip "print"
         let expression = self.parse_expression();
-        Statement::Print(Box::new(PrintStatement {
+        Box::new(PrintStatement {
             expression: Box::new(expression),
-        }))
+        })
     }
 
-    fn parse_where_statement(&mut self) -> Statement {
+    fn parse_where_statement(&mut self) -> Box<WhereStatement> {
         self.advance(); // Skip "where"
         let condition = self.parse_expression();
         let true_branch = self.parse_program();
@@ -259,38 +285,39 @@ impl<'a> Parser<'a> {
         } else {
             None
         };
-        Statement::Where(Box::new(WhereStatement {
+        Box::new(WhereStatement {
             condition: Box::new(condition),
             true_branch,
             false_branch,
-        }))
+        })
     }
 
-    fn parse_loop_statement(&mut self) -> Statement {
+    fn parse_loop_statement(&mut self) -> Box<LoopStatement> {
         self.advance(); // Skip "loop"
         let expression = self.parse_expression();
-        Statement::Loop(Box::new(LoopStatement {
+        Box::new(LoopStatement {
             expression: Box::new(expression),
-        }))
+        })
     }
 
-    fn parse_iter_statement(&mut self) -> Statement {
+    fn parse_iter_statement(&mut self) -> Box<IterStatement> {
         self.advance(); // Skip "iter"
         let variable = match self.current_token {
             Token::Identifier(ref id) => id.clone(),
             _ => {
                 println!("Expected identifier after 'iter' keyword, got {:?}", self.current_token);
-                return Statement::Print(Box::new(PrintStatement {
+                return Box::new(IterStatement {
+                    variable: "error".to_string(),
                     expression: Box::new(Expression::StringLiteral("No Identifier (Iter).".to_string())),
-                }));
+                });
             }
         };
         self.advance(); // Advance to next token
         let expression = self.parse_expression();
-        Statement::Iter(Box::new(IterStatement {
+        Box::new(IterStatement {
             variable,
             expression: Box::new(expression),
-        }))
+        })
     }
 
     fn parse_expression(&mut self) -> Expression {
@@ -316,8 +343,10 @@ impl<'a> Parser<'a> {
         }
     }
     
-    pub fn parse(&mut self) -> ASTNode {
+    pub fn parse(&mut self) -> Result<ASTNode, String> {
         let program = self.parse_program();
-        ASTNode::Program(program)
+        let mut type_checker = TypeChecker::new();
+        type_checker.check(&program)?;
+        Ok(program)
     }
 }

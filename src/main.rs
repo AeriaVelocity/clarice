@@ -1,8 +1,12 @@
 mod lexer;
 mod parser;
 mod symbol_table;
+mod type_checker;
 
 use linefeed::{Interface, ReadResult};
+
+use lexer::Lexer;
+use parser::Parser;
 
 fn clarice_eval(input: String) -> String {
     if input.as_str() == "exit" {
@@ -47,5 +51,16 @@ fn interactive() {
 }
 
 fn main() {
-    lexer::test("with x as 1 print x");
+    let program = "set x to 1 then set y to x then print y";
+    let lexer = Lexer::new(program);
+    let mut parser = Parser::new(lexer);
+
+    match parser.parse() {
+        Ok(program) => {
+            println!("Parsed successfully! {:#?}", program);
+        }
+        Err(e) => {
+            println!("Error during parsing: {}", e);
+        }
+    }
 }

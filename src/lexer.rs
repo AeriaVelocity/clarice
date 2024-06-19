@@ -115,7 +115,7 @@ impl<'a> Lexer<'a> {
         }
         
         match identifier.as_str() {
-            "with" | "as" | "to" | "set" | "where" | "otherwise" | "iter" | "in" | "then" => {
+            "with" | "set" | "as" | "to" | "then" | "do" | "print" | "where" | "loop" | "iter" => {
                 Token::Keyword(identifier)
             },
             _ => Token::Identifier(identifier),
