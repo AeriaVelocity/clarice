@@ -2,26 +2,50 @@ mod lexer;
 mod parser;
 mod symbol_table;
 mod type_checker;
+mod interpreter;
 
 use linefeed::{Interface, ReadResult};
 
 use lexer::Lexer;
 use parser::Parser;
+use interpreter::Environment;
 
 fn clarice_eval(input: String) -> String {
-    if input.as_str() == "exit" {
-        println!("Okay, shutting down the Clarice interactive mode.");
-        std::process::exit(0);
+    match input.as_str() {
+        "exit" => {
+            println!("Okay, shutting down the Clarice interactive mode.");
+            std::process::exit(0);
+        }
+        "help" => {
+            println!("You can enter Clarice commands into the interactive prompt.");
+            println!("Type 'exit' to exit interactive mode.");
+            return "=> help".to_string();
+        }
+        _ => (),
     }
-    else {
-        format!("There is no evaluation! Function definition intentionally left blank.\nYou typed: {}", input)
-    }
+    let lexer = Lexer::new(&input);
+    let mut parser = Parser::new(lexer);
+
+    let parsed_program = match parser.parse() {
+        Ok(program) => program,
+        Err(e) => {
+            return format!("Error during parsing: {}", e);
+        }
+    };
+
+    let mut environment = Environment::new();
+
+    environment.interpret(parsed_program);
+
+    // This is where I'd put the return value. IF I HAD ONE
+    format!("=> {}", input)
 }
 
 fn clarice_welcome() {
     let cargo_version = std::env::var("CARGO_PKG_VERSION").unwrap();
     println!("Clarice v{}", cargo_version);
-    println!("YOU ARE RUNNING THE UNIMPLEMENTED CLARICE INTERACTIVE MODE. THIS IS NOT SUPPOSED TO WORK.");
+    println!("You are running the Clarice interactive mode. Please note Clarice is not yet fully functional.");
+    println!("Type `help` for help or `exit` to leave interactive mode.");
 }
 
 fn interactive() {
@@ -51,16 +75,6 @@ fn interactive() {
 }
 
 fn main() {
-    let program = "set x to 1 then set y to x then print y";
-    let lexer = Lexer::new(program);
-    let mut parser = Parser::new(lexer);
-
-    match parser.parse() {
-        Ok(program) => {
-            println!("Parsed successfully! {:#?}", program);
-        }
-        Err(e) => {
-            println!("Error during parsing: {}", e);
-        }
-    }
+    interactive();
 }
+

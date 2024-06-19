@@ -5,10 +5,11 @@ use std::collections::HashMap;
 #[derive(Debug, PartialEq, Clone)]
 pub enum Type {
     Integer,
+    Double,
     String,
     Boolean,
-    Function,
-    Unknown,
+    Closure,
+    List,
     Void,
 }
 

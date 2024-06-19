@@ -5,12 +5,12 @@ use crate::symbol_table::{SymbolTable, Type};
 use crate::type_checker::{self, TypeChecker};
 use std::vec::Vec;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ASTNode {
     Program(Vec<Statement>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Statement {
     With(Box<WithStatement>),
     Set(Box<SetStatement>),
@@ -22,71 +22,76 @@ pub enum Statement {
     Where(Box<WhereStatement>),
     Loop(Box<LoopStatement>),
     Iter(Box<IterStatement>),
+    Expression(Box<Expression>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct WithStatement {
     pub identifier: String,
     pub expression: Box<Expression>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SetStatement {
     pub variable: String,
     pub expression: Box<Expression>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AsStatement {
     pub identifier: String,
     pub expression: Box<Expression>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ToStatement {
     pub identifier: String,
     pub expression: Box<Expression>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ThenStatement {
     pub statement: Box<Statement>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DoStatement {
     pub expression: Box<Expression>,
+    pub statement: Box<Statement>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PrintStatement {
     pub expression: Box<Expression>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct WhereStatement {
     pub condition: Box<Expression>,
     pub true_branch: ASTNode,
     pub false_branch: Option<ASTNode>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LoopStatement {
     pub expression: Box<Expression>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct IterStatement {
     pub variable: String,
+    pub iterable: Box<Expression>,
     pub expression: Box<Expression>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expression {
     Identifier(String),
     IntegerLiteral(i64),
     StringLiteral(String),
     BooleanLiteral(bool),
+    ListLiteral(Vec<Expression>),
+    FunctionCall(String, Vec<Expression>),
 }
 
 pub struct Parser<'a> {
@@ -264,6 +269,7 @@ impl<'a> Parser<'a> {
         let expression = self.parse_expression();
         Box::new(DoStatement {
             expression: Box::new(expression),
+            statement: Box::new(self.parse_statement()),
         })
     }
 
@@ -308,6 +314,7 @@ impl<'a> Parser<'a> {
                 println!("Expected identifier after 'iter' keyword, got {:?}", self.current_token);
                 return Box::new(IterStatement {
                     variable: "error".to_string(),
+                    iterable: Box::new(Expression::StringLiteral("No Iterable (Iter)".to_string())),
                     expression: Box::new(Expression::StringLiteral("No Identifier (Iter).".to_string())),
                 });
             }
@@ -316,6 +323,7 @@ impl<'a> Parser<'a> {
         let expression = self.parse_expression();
         Box::new(IterStatement {
             variable,
+            iterable: Box::new(self.parse_expression()),
             expression: Box::new(expression),
         })
     }
