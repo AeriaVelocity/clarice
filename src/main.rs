@@ -10,7 +10,7 @@ use lexer::Lexer;
 use parser::Parser;
 use interpreter::Environment;
 
-fn clarice_eval(input: String) -> String {
+fn clarice_eval(input: String, environment: &mut Environment) -> String {
     match input.as_str() {
         "exit" => {
             println!("Okay, shutting down the Clarice interactive mode.");
@@ -20,6 +20,9 @@ fn clarice_eval(input: String) -> String {
             println!("You can enter Clarice commands into the interactive prompt.");
             println!("Type 'exit' to exit interactive mode.");
             return "=> help".to_string();
+        } 
+        "vars" => {
+            return format!("{:#?}", environment.variables);
         }
         _ => (),
     }
@@ -32,8 +35,6 @@ fn clarice_eval(input: String) -> String {
             return format!("Error during parsing: {}", e);
         }
     };
-
-    let mut environment = Environment::new();
 
     environment.interpret(parsed_program);
 
@@ -54,6 +55,7 @@ fn interactive() {
 
     // Linefeed
     let interface = Interface::new("Clarice").unwrap();
+    let mut environment = Environment::new();
     let prompt = String::from("Clarice> ");
     interface.set_prompt(&prompt).unwrap();
 
@@ -64,7 +66,7 @@ fn interactive() {
             interface.add_history_unique(command.clone());
 
             // Eval
-            let eval_result = clarice_eval(command);
+            let eval_result = clarice_eval(command, &mut environment);
             
             // Print
             println!("{}", eval_result);

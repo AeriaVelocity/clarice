@@ -88,6 +88,7 @@ pub struct IterStatement {
 pub enum Expression {
     Identifier(String),
     IntegerLiteral(i64),
+    DoubleLiteral(f64),
     StringLiteral(String),
     BooleanLiteral(bool),
     ListLiteral(Vec<Expression>),
@@ -177,6 +178,17 @@ impl<'a> Parser<'a> {
             }
         };
         self.advance(); // Advance to next token
+        if self.current_token != Token::Keyword("as".to_string()) {
+            println!("Expected 'as' after identifier, got {:?}", self.current_token);
+            if self.current_token == Token::Operator("=".to_string()) {
+                println!("`=` is not used for variable assignment in Clarice. Use `as` instead.");
+            }
+            return Box::new(WithStatement {
+                identifier: "error".to_string(),
+                expression: Box::new(Expression::StringLiteral("Invalid Keyword.".to_string())),
+            });
+        }
+        self.advance(); // Skip "as"
         let expression = self.parse_expression();
         Box::new(WithStatement {
             identifier,
@@ -185,8 +197,8 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_set_statement(&mut self) -> Box<SetStatement> {
-        self.advance(); // Skip "set"
-        let variable = match self.current_token {
+        self.advance(); // Skip "set"   
+        let identifier = match self.current_token {
             Token::Identifier(ref id) => id.clone(),
             _ => {
                 println!("Expected identifier after 'set' keyword, got {:?}", self.current_token);
@@ -196,22 +208,24 @@ impl<'a> Parser<'a> {
                 });
             }
         };
-        self.advance(); // Skip identifier
-
-        match &self.current_token {
-            Token::Keyword(ref keyword) if keyword == "to" => self.advance(),
-            _ => {
-                println!("Expected 'to' after variable name, got {:?}", self.current_token);
-                return Box::new(SetStatement {
-                    variable: "error".to_string(),
-                    expression: Box::new(Expression::StringLiteral("No Expression (Set)".to_string())),
-                });
+        self.advance(); // Advance to next token
+        if self.current_token != Token::Keyword("to".to_string()) {
+            println!("Expected 'to' after identifier, got {:?}", self.current_token);
+            if self.current_token == Token::Operator("=".to_string()) {
+                println!("`=` is not used for variable assignment in Clarice. Use `to` instead.");
             }
+            else if self.current_token == Token::Keyword("as".to_string()) {
+                println!("`as` is not used for the `set` statement. Use `to` instead.");
+            }
+            return Box::new(SetStatement {
+                variable: "error".to_string(),
+                expression: Box::new(Expression::StringLiteral("Invalid Keyword.".to_string())),
+            });
         }
-
+        self.advance(); // Skip "to"
         let expression = self.parse_expression();
         Box::new(SetStatement {
-            variable,
+            variable: identifier,
             expression: Box::new(expression),
         })
     }

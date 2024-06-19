@@ -8,6 +8,7 @@ use crate::symbol_table::{SymbolTable, Type};
 #[derive(Debug, Clone)]
 pub enum Value {
     Integer(i64),
+    Double(f64),
     String(String),
     Boolean(bool),
     List(Vec<Expression>),
@@ -16,7 +17,7 @@ pub enum Value {
 }
 
 pub struct Environment {
-    variables: HashMap<String, Value>,
+    pub variables: HashMap<String, Value>,
 }
 
 impl Environment {
@@ -24,6 +25,14 @@ impl Environment {
         Environment {
             variables: HashMap::new(),
         }
+    }
+
+    pub fn set(&mut self, name: String, value: Value) {
+        self.variables.insert(name, value);
+    }
+
+    pub fn get(&self, name: &str) -> Option<&Value> {
+        self.variables.get(name)
     }
 
     pub fn interpret(&mut self, program: ASTNode) {
@@ -68,7 +77,8 @@ impl Environment {
         self.variables.insert(with_statement.identifier.clone(), value);
     }
 
-    /// The `set` statement assigns a value to a variable.
+    /// The `set` statement assigns a value to a variable permanently, unlike
+    /// `with` which drops the variable immediately.
     /// `set` requires an expression followed by the `to` keyword and a value.
     /// 
     /// Example:
@@ -83,12 +93,12 @@ impl Environment {
 
     /// `as` is used only with `with` - it cannot be used on its own.
     fn execute_as(&mut self, _as_statement: &AsStatement) {
-        panic!("`as` cannot be used on its own - use `with expr as val`")
+        eprintln!("`as` cannot be used on its own - use `with expr as val`")
     }
 
     /// `to` is used only with `set` - it cannot be used on its own.
     fn execute_to(&mut self, _to_statement: &ToStatement) {
-        panic!("`to` cannot be used on its own - use `set var to expr`")
+        eprintln!("`to` cannot be used on its own - use `set var to expr`")
     }
 
     /// The `then` statement is used for separating statements without using
@@ -129,6 +139,7 @@ impl Environment {
         match value {
             Value::String(s) => println!("{}", s),
             Value::Integer(i) => println!("{}", i),
+            Value::Double(d) => println!("{}", d),
             Value::Boolean(b) => println!("{}", b),
             Value::List(l) => println!("{:?}", l),
             Value::Closure(str, stat) => println!("{:?}, {:?}", str, stat),
@@ -209,10 +220,12 @@ impl Environment {
                 if let Some(value) = self.variables.get(id) {
                     return value.clone();
                 } else {
-                    panic!("No variable `{}` - use `with` or `set` to define it", id)
+                    eprintln!("No variable `{}` - use `with` or `set` to define it", id);
+                    return Value::Void;
                 }
             }
             Expression::IntegerLiteral(i) => Value::Integer(*i),
+            Expression::DoubleLiteral(d) => Value::Double(*d),
             Expression::BooleanLiteral(b) => Value::Boolean(*b),
             Expression::StringLiteral(s) => Value::String(s.clone()),
             Expression::ListLiteral(l) => Value::List(l.clone()),

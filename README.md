@@ -1,9 +1,5 @@
 # Clarice
 
-> ![NOTE]
-> Clarice is not implemented yet. *sad face*
-> Still, though, for the sake of the README, I'll act like it is.
-
 Clarice is a general-purpose natural-language functional/declarative programming
 language built for simplicity, conciseness and clarity, using programming
 statements that flow like English sentences rather than feeling like programming
@@ -43,15 +39,27 @@ with Markdown.ConvertHTML as htmlize do
     htmlize description to "ClariceDescription.html"
 ```
 
+## Usage
+
+Clarice is not ready for production use and is not on crates.io yet.
+
+To use Clarice despite its early development stages, feel free to clone the
+repository (`git clone https://github.com/aeriavelocity/clarice.git`). and run
+the Clarice interactive mode with `cargo run`.
+
 ## Note about Usage/Contribution/Future/Other Stuff
 
-Clarice is still very much ~~in alpha stages~~ NOT IMPLEMENTED. If you wish to
-collaborate with me on Clarice's development, please feel free to send pull
-requests.
+Clarice is still very much in early development and is not ready for anything
+serious.
 
-When it's ready, the Clarice programming language will only include include the
-Clarice interpreter. Eventually, I plan to write an LSP server for Clarice and a
-Clarice-to-Python transpiler.
+If you wish to collaborate with me on Clarice's development, please feel free to
+send pull requests.
+
+When it's ready, the Clarice programming language will only include the Clarice
+interpreter and the Clarice interactive mode.
+
+Eventually, I plan to write an LSP server for Clarice and a Clarice-to-Python
+transpiler.
 
 ## Licence
 
